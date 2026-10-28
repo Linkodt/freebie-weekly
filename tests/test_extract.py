@@ -160,5 +160,23 @@ class TitleSuffixTest(unittest.TestCase):
         self.assertEqual(extract._strip_site_suffix("展览_北京"), "展览_北京")
 
 
+
+class DedupeKeyTest(unittest.TestCase):
+    """去重键必须稳定：实测同一 URL 两次抓取，标题和日期都会漂（页面偶尔吐空壳）。"""
+
+    def test_same_url_same_key(self):
+        a = Item(url="https://x/1", title="绿心花朝游园会", date_hints=["10.31-11.1"])
+        b = Item(url="https://x/1", title="（空壳页）", date_hints=[])
+        self.assertEqual(a.key, b.key)
+
+    def test_different_urls_differ(self):
+        a = Item(url="https://x/1", title="免费活动汇总")
+        b = Item(url="https://x/2", title="免费活动汇总")
+        self.assertNotEqual(a.key, b.key)
+
+    def test_no_url_falls_back_to_title(self):
+        self.assertEqual(Item(title="某活动").key, "某活动")
+
+
 if __name__ == "__main__":
     unittest.main()

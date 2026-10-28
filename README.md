@@ -108,7 +108,7 @@ freebie discover --city 北京                          # 建本地账号清单�
 ## 检查（每次改抽取逻辑都先跑这个）
 
 ```bash
-PYTHONPATH=src python3 -B -m unittest discover -s tests -v   # 22 条，全是踩过的坑
+PYTHONPATH=src python3 -B -m unittest discover -s tests -v   # 27 条，全是踩过的坑
 PYTHONPATH=src python3 -B -m freebie.cli doctor              # 搜索通道和采集后端能不能用
 PYTHONPATH=src python3 -B -m freebie.cli cities              # 哪些城市已备好信源
 ```
@@ -201,7 +201,8 @@ prompts/        把 JSON 变成人话周报的 LLM prompt
 - **活动行/大麦这类平台正文常是前端模板**，抽不到干净摘要时本工具留空，而不是印一行 `{{venueInfo.todoCount}}`。
 - **活动行的「活动时间」是 JS 渲染的**：抓到的 HTML 里没有日期，只能标 `⚠️ 未标时间`，别以为抓漏了。
 - **搜狐号会返 403**，本地宝/聚合页里塞满「相关推荐」链接（`XX大剧院入场须知（附交通…）`），这些行已被场地过滤器拦掉，但同形态的噪声还会再出现。
-- **`state/seen.json` 会让重跑变 0 条**：这是去重台账在起作用，验证时加 `--dry-run`。
+- **`state/seen.json` 会让重跑变 0 条**：这是去重台账在起作用（退出码 2），验证时加 `--dry-run`。
+- **去重键只认 URL**：同一页面两次抓取标题/日期都会漂（btime 偶尔吐空壳），键掺内容就会同一场活动反复上报；代价是「地址不变、内容原地更新」的专题页不会重复推送——公众号文章每周是新链接，不受影响。
 
 ## 路线图
 
