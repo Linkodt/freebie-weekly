@@ -41,8 +41,10 @@ def score(item: Item, now: time.struct_time = None) -> float:
         if item.original_price and item.original_price > item.min_price:
             drop = 1 - item.min_price / item.original_price
             s += min(25.0, drop * 40)  # 折得越狠分越高，最多 25
-    if item.original_price and item.min_price and item.original_price > item.min_price:
-        s += 8
+    # 原价锚点只在「没说价格但有原价」时才加分：折价那条路已经算过了，
+    # 两处都加会让一条 ¥380→¥30 的票凭空多 8 分（实测截图里的 53 分就是这么来的）
+    if item.original_price and not item.min_price:
+        s += 4
     offset = _soonest_day_offset(item, now)
     if offset <= 2:
         s += 20

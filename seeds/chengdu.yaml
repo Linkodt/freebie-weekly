@@ -1,0 +1,36 @@
+# 成都本地活动信源清单
+#
+# 用法：`freebie run --city 成都` 自动读 channels，不跑搜索。
+# 状态：v0.1，2026-10-28 实测。成都免费供给以「博物馆/文博展览」为主，演出类偏商业。
+
+city: 成都
+city_id: cd
+
+channels:
+  - name: 活动行 · 成都公益讲座
+    url: https://7762436584188.huodongxing.com/event/6883738167900
+    note: 活动行单场页，结构化字段最全，免费场次明确标注
+  - name: 搜狐 · 成都文博银龄优惠
+    url: https://www.sohu.com/a/1093461261_116237
+    note: 工作日专场讲解/免票/折扣汇总；注意「银龄」有年龄门槛，进周报要标清适用人群
+
+# 发现入口（不是信源）：
+#  - https://www.cdmuseum.com/                     成都博物馆活动日历
+#  - https://www.sohu.com/                         搜狐号转载的本地文博/文旅报道
+
+queries:
+  - "{city} 本周末 免费 活动 汇总"
+  - "{city} 免费 展览 音乐会 市集"
+  - "site:mp.weixin.qq.com {city} 免费 音乐会"
+  - "{city} 博物馆 免费 讲解 预约"
+
+accounts:
+  - name: 我们的大成都
+    note: 城市生活号，周末合集+福利票；免费条目有，但夹带大量商业推广
+    tier: B
+  - name: 青聚锦官城
+    note: 团市委系账号，青年活动/志愿服务/免费讲座，受众限青年
+    tier: B
+  - name: 携程热点
+    note: 全国矩阵号，成都条目偏景区套票，免费信息需再筛
+    tier: C

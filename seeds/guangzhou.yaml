@@ -1,0 +1,36 @@
+# 广州本地活动信源清单
+#
+# 用法：`freebie run --city 广州` 自动读 channels，不跑搜索。
+# 状态：v0.1，2026-10-28 实测。广州目前只验证到 1 个可用信源，样本偏薄。
+
+city: 广州
+city_id: gz
+
+channels:
+  - name: 广州图书馆 · 活动报名
+    url: https://action.gzlib.org.cn/action/web/integral.do?actionCmd=viewSP&id=50126636
+    note: 广图活动详情页，讲座/展览/亲子阅读，绝大多数免费但需报名；市馆+分馆都有
+
+# 发现入口（不是信源）：
+#  - https://action.gzlib.org.cn/action/web/integral.do      广图活动总入口（栏目页抽不出字段）
+#  - https://www.gzlib.org.cn/                               广州图书馆官网
+#  - https://wap.ycwb.com/                                   羊城晚报（二沙岛音乐季等免费户外演出报道）
+
+queries:
+  - "{city} 本周末 免费 活动 汇总"
+  - "{city} 免费 展览 音乐会 市集"
+  - "site:mp.weixin.qq.com {city} 免费 音乐会"
+  - "{city} 图书馆 讲座 免费 报名"
+
+accounts:
+  - name: GZ周末好去处
+    note: 周末活动合集，覆盖展览/市集/演出；免费条目占比高，是广州主力号
+    tier: A
+  - name: 广州Book
+    alias: chwlj020
+    fans: 24万
+    note: 城市生活号，活动预告+探店混排，需人工剔商业内容
+    tier: B
+  - name: 龙凤胎霖妈遛娃大本营
+    note: 亲子遛娃，免费公园/科普/图书馆活动多，地域偏天河/番禺
+    tier: C

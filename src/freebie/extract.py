@@ -33,6 +33,16 @@ DATE_RANGE_RE = re.compile(
 )
 DATE_POINT_RE = re.compile(r"(\d{1,2})\s*[月.\-/]\s*(\d{1,2})\s*[日号]")
 WEEK_RE = re.compile(r"本周[一二三四五六日天末]|下周末|本周末")
+# 活动行/搜狐这类页把时间写成 2026-11-08 14:30，中文日期正则抓不到。
+# 只在「时间：」这类标签后面认，避免把文章发布日当成活动日。
+ISO_LABEL_RE = re.compile(
+    r"(?<!发布)(?<!發布)(?<!编辑)(?<!更新)(?<!发表)(?:活动时间|活動時間|演出时间|举办时间|开始时间|时间|日期)[：:]\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})"
+)
+# 「免门票免预约」这类明确否定要压过页面里的「预约入口」链接——否则会误报「需预约」
+NO_BOOKING_RE = re.compile(r"免预约|免預約|无需预约|無需預約|不需预约|不用预约|不必预约|直接入场|直接入場|无需报名")
+# 详情页标题常常就叫「活动详情」，这种标题进周报等于没标题
+GENERIC_TITLE_RE = re.compile(r"^(活动详情|活動詳情|活动报名|活动介绍|活动页|详情|在线报名|立即报名|活动详情页|预约详情)$")
+VENUE_NOISE_RE = re.compile(r"预约|報名|报名|入口|攻略|优惠|门票|門票|购票|購票|地址|交通|电话|電話|须知|須知|指南|怎么|怎麼|如何|附[：:]|（")
 VENUES = (
     "音乐厅", "美术馆", "博物馆", "图书馆", "大剧院", "剧院", "艺术中心", "文化馆",
     "体育中心", "会展中心", "大学", "学院", "公园", "书城", "剧场", "展馆", "影城",
@@ -130,6 +140,7 @@ def _body(page: str) -> str:
 JUNK_LINE_RE = re.compile(
     r"^(首页|当前位置|上一篇|下一篇|分享到|返回顶部|关于我们|联系我们|广告合作|版权|版权所有|免责声明|Copyright"
     r"|日期|来源|发布时间|编辑|作者|责任编辑)[：:]"
+    r"|^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\s+\d{1,2}:\d{2}"
     r"|免费(创建|发布|注册|咨询|试听|兑换)|时间币|扫码下载|关注我们|-->|活动管理系统|活动发布平台|主办方入驻"
     r"|^[\s>·|—\-_]+$"
 )
@@ -191,13 +202,43 @@ def parse_article(page: str) -> dict:
     title = _meta_title(page)
     if not title:
         raise Blocked("没解析到标题，页面结构可能已变")
+    text = _body(page)
+    if GENERIC_TITLE_RE.match(title.strip()):
+        better = _content_title(text)
+        if better:
+            title = better
+    title = _strip_site_suffix(title)
     return {
         "title": title,
         "account": _account(page),
         "published_at": published_at,
-        "text": _body(page),
+        "text": text,
         "page_price": page_price(page),
     }
+
+
+def _strip_site_suffix(title: str) -> str:
+    """`…攻略来啦_北京时间`：og:title 常带站点名，剪掉；标题本身很短时不剪。"""
+    m = re.search(r"[_|｜]\s*([^_|｜]{2,10})$", title)
+    if m and m.start() >= 8 and not re.search(r"\d", m.group(1)):
+        return title[: m.start()].strip()
+    return title
+
+
+def _content_title(text: str) -> str:
+    """详情页标题是「活动详情」时，从正文里挑一行当标题（优先含活动类型的那行）。"""
+    cands = [
+        ln.strip()
+        for ln in text.split("\n")
+        if 8 <= len(ln.strip()) <= 60 and not JUNK_LINE_RE.search(ln)
+    ]
+    if not cands:
+        return ""
+    for k in ("音乐会", "展览", "讲座", "演出", "市集", "游园", "开放日", "嘉年华"):
+        for ln in cands[:12]:
+            if k in ln:
+                return ln
+    return cands[0]
 
 
 def _uniq(seq) -> List[str]:
@@ -234,6 +275,8 @@ def extract_fields(text: str) -> dict:
         dates.append(f"{int(mo)}.{int(d1)}-{int(mo)}.{int(d2)}")
     for mo, d in DATE_POINT_RE.findall(rest):
         dates.append(f"{int(mo)}.{int(d)}")
+    for _y, mo, d in ISO_LABEL_RE.findall(text):
+        dates.append(f"{int(mo)}.{int(d)}")
     dates = _valid_hints(dates)
     dates += WEEK_RE.findall(text)
     venue = _venue(text)
@@ -242,7 +285,7 @@ def extract_fields(text: str) -> dict:
         "is_free": bool(FREE_RE.search(text)),
         "prices": prices,
         "original_price": orig,
-        "needs_booking": bool(BOOKING_RE.search(text)),
+        "needs_booking": bool(BOOKING_RE.search(text)) and not NO_BOOKING_RE.search(text),
         "deadline": dl.group(0).strip() if dl else "",
         "date_hints": _uniq(dates)[:6],
         "venue": venue,
@@ -272,6 +315,9 @@ def _venue(text: str) -> str:
             line = text[start : end if end > 0 else len(text)].strip()
             if not (0 < len(line) <= 30) or "-->" in line or "首页" in line:
                 continue
+            # 「XX剧院入场参观预约方式2026（预约入口+优惠政策）」是相关推荐链接，不是场地
+            if VENUE_NOISE_RE.search(line):
+                continue
             line = re.sub(r"^[在于]\s*", "", line)
             line = re.sub(r"(举行|举办|开展|开放)?中?[，,。！!]?$", "", line)
             if line:
@@ -291,6 +337,7 @@ def summarize(text: str, title: str = "", limit: int = 110) -> str:
         for ln in text.split("\n")
         if len(ln) >= 12
         and ln.count(">") < 2
+        and not JUNK_LINE_RE.search(ln)  # 元数据行（日期：/来源：）曾被选成摘要
         and not any(w in ln for w in AD_WORDS[:2])
         and "{{" not in ln  # Vue/Handlebars 模板残留，不是给人看的字
         and "}}" not in ln

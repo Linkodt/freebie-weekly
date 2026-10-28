@@ -11,6 +11,21 @@
 
 city: 深圳
 city_id: sz
+
+channels:
+  - name: 深圳市文体旅游局 · 活动预告
+    url: https://wtl.sz.gov.cn/bsfw/mzwhhd/mzly/content/post_13027678.html
+    note: 政务站活动页，免费/是否需预约写得很明确，标题也干净（实测 768 字正文）
+  - name: 深圳活动行 · 免费场次
+    url: https://7823119577009.huodongxing.com/event/5882939420100
+    note: 活动行单场页，字段结构化；JSON 里 PriceStr=免费、DisPrice=0.0
+
+queries:
+  - "{city} 本周末 免费 活动 汇总"
+  - "{city} 免费 展览 音乐会 市集"
+  - "site:mp.weixin.qq.com {city} 免费 音乐会"
+  - "{city} 周末 免费 活动 公众号"
+
 accounts:
   - name: 深圳生活宝典
     hits: 3

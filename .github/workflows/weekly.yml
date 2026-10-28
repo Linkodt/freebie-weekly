@@ -1,0 +1,65 @@
+name: weekly
+
+# 每周一 09:00（Asia/Shanghai = UTC 01:00）出一版清单。
+# 注意：GitHub runner 在境外，抓国内站点可能比本地慢甚至被墙——
+# 这一步先当「可复现的冒烟测试」用，稳定了再当主力。主力仍是本地定时。
+on:
+  schedule:
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+    inputs:
+      city:
+        description: "城市（对应 seeds/<拼音>.yaml）"
+        required: false
+        default: "北京"
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CITY: ${{ inputs.city || '北京' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 单元测试（这些用例是踩过的坑，不是装饰）
+        run: PYTHONPATH=src python3 -m unittest discover -s tests -v
+
+      - name: 恢复去重台账
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: seen-${{ env.CITY }}-${{ github.run_id }}
+          restore-keys: seen-${{ env.CITY }}-
+
+      - name: 生成本周清单
+        id: run
+        run: |
+          set +e
+          PYTHONPATH=src python3 -m freebie.cli run --city "$CITY" --verbose > report.txt 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          cat report.txt
+          # 退出码 2 = 本周无新增条目，这是正常结果，不该让 job 变红
+          exit 0
+
+      - name: 保存去重台账
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: seen-${{ env.CITY }}-${{ github.run_id }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-${{ env.CITY }}-${{ github.run_number }}
+          path: |
+            report.txt
+            state/seen.json
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,0 +1,33 @@
+# 杭州本地活动信源清单
+#
+# 用法：`freebie run --city 杭州` 自动读 channels，不跑搜索。
+# 状态：v0.1，2026-10-28 实测。活动行页面字段齐全（含「免费」标记与报名入口）。
+
+city: 杭州
+city_id: hz
+
+channels:
+  - name: 活动行 · 杭州公益讲座
+    url: https://1543329687528.huodongxing.com/event/9883736866300
+    note: 活动行单场页，时间/场地/费用结构化，免费场次会明确写免费
+
+# 发现入口（不是信源）：
+#  - https://www.huodongxing.com/events?city=杭州    活动行城市列表（栏目页，字段需二次抓）
+#  - https://www.hzcbzx.com/                          杭州文广旅游局活动预告
+
+queries:
+  - "{city} 本周末 免费 活动 汇总"
+  - "{city} 免费 展览 音乐会 市集"
+  - "site:mp.weixin.qq.com {city} 免费 音乐会"
+  - "{city} 公益 讲座 免费 报名"
+
+accounts:
+  - name: 杭州艺术展览
+    note: 展览日历型账号，免费展/新展开幕信息最全，时间地点可直接抄
+    tier: A
+  - name: 本地宝杭州办事易
+    note: 本地宝矩阵号，办事+活动混排；免费活动集中在周末合集里
+    tier: B
+  - name: 临平亲子俱乐部
+    note: 片区号（临平），免费亲子活动密集，出了片区参考价值低
+    tier: C

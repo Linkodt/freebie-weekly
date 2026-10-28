@@ -1,0 +1,37 @@
+# 上海本地活动信源清单
+#
+# 用法：`freebie run --city 上海` 自动读 channels，不跑搜索。
+# 信源只写「本周实测抓得通的具体活动页」；栏目页见注释里的「发现入口」，不当信源。
+# 状态：v0.1，2026-10-28 实测。下周页面过期就换链接。
+
+city: 上海
+city_id: sh
+
+channels:
+  - name: 上海本地宝 · 演出活动
+    url: http://sh.bendibao.com/tour/20261028/310079.shtm
+    note: 单场演出页，时间/地点/票价齐全；本地宝系每城都有，是最好复制的入口
+  - name: 上观新闻 · 草坪演艺生活季
+    url: https://www.jfdaily.com/sgh/detail?id=4075259
+    note: 4 大主题周，草坪免费观演；上观号文章页正文完整，可抽时间/场地
+
+# 发现入口（不是信源）：
+#  - http://sh.bendibao.com/tour/           本地宝上海演出/活动栏目
+#  - https://www.jfdaily.com/               上观新闻（政务/文旅口，活动预告多）
+
+queries:
+  - "{city} 本周末 免费 活动 汇总"
+  - "{city} 免费 展览 音乐会 市集"
+  - "site:mp.weixin.qq.com {city} 免费 音乐会"
+  - "{city} 公益 演出 免费 预约"
+
+accounts:
+  - name: 上海闲去时光
+    note: 周末活动合集，偏免费展览/市集；实测命中率一般，需复核时间
+    tier: B
+  - name: 携程热点
+    note: 全国矩阵号，上海条目偏商业（酒店/景区套票），免费信息要再筛
+    tier: B
+  - name: 带全家去旅行
+    note: 亲子向，多免费公园/科普活动，地域覆盖上海+周边
+    tier: C

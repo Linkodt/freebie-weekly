@@ -105,21 +105,44 @@ freebie discover --city 北京                          # 建本地账号清单�
 
 页脚会写清「这轮抓了几个、丢了几个、为什么丢」——**没覆盖到什么**和覆盖到什么一样重要。
 
+## 检查（每次改抽取逻辑都先跑这个）
+
+```bash
+PYTHONPATH=src python3 -B -m unittest discover -s tests -v   # 22 条，全是踩过的坑
+PYTHONPATH=src python3 -B -m freebie.cli doctor              # 搜索通道和采集后端能不能用
+PYTHONPATH=src python3 -B -m freebie.cli cities              # 哪些城市已备好信源
+```
+
+测试用例就是 bug 清单：`200元` 不能被当成免费、`10月31日至11月1日` 不能被截成 `10.31-11`、`预约方式：` 这个标签不能算「需预约」、`免预约` 要压过页面里的「预约入口」链接、`发布时间：2026-10-28` 不是活动日期、`活动详情` 这种标题要回退到正文标题。
+
 ## 每周定时
 
-macOS/Linux cron（周一 9:00，城市换成你自己的）：
+在 DSH harness 里跑（推荐，交付直接到会话）：`weekly` + `Asia/Shanghai` + 周一 09:00，prompt 只写三句：
+
+> 1. 跑 `cd /path/to/freebie-weekly && PYTHONPATH=src python3 -B -m freebie.cli run --city 北京`。
+> 2. 输出原样贴成一条消息；退出码 2 就说「本周无新增」。
+> 3. 出现「取页失败」就照实说哪个信源挂了，不要自己搜内容补上。
+
+城市已备好 `seeds/<城市>.yaml` 时，CLI 会自己用它，不用先搜链接。macOS/Linux cron 备选：
 
 ```cron
 0 9 * * 1  cd /path/to/freebie-weekly && PYTHONPATH=src /usr/bin/python3 -B -m freebie.cli run --city 北京 >> out/weekly.log 2>&1
 ```
 
-在 DSH harness 里跑，用 `weekly` + `Asia/Shanghai`，prompt 只写三句（**先搜再抓，别让 CLI 自己搜**）：
+还给了 `.github/workflows/weekly.yml`（每周一 UTC 01:00 跑一次，把 `report.txt` 存成 artifact，`state/` 用 cache 保住去重台账）。**但 GitHub runner 在境外**，抓国内站点可能更慢甚至被墙，所以它现在只算「可复现的冒烟测试」，主力仍是本地定时。
 
-> 1. 用 `web_search` 搜 `site:mp.weixin.qq.com 北京 免费 音乐会`、`北京 本周末 免费活动汇总`、`北京 免费 展览 市集`，只收 `mp.weixin.qq.com/s` 且带 `chksm=` 的长链。
-> 2. 跑 `PYTHONPATH=src python3 -B -m freebie.cli run --city 北京 --urls <上面找到的链接>`。
-> 3. 把命令输出原样贴成一条消息；退出码 2 时只回「本周无新增」，**不要补内容、不要改日期**。
+## 已备好信源的城市
 
-城市已备好 `seeds/<城市>.yaml` 的话第 1 步可以省掉，直接 `freebie run --city 北京`——它会自己用那份信源。
+| 城市 | 文件 | 信源数 | 实测状态（2026-10-28） |
+|---|---|---|---|
+| 北京 | `seeds/beijing.yaml` | 4 | 3 条可用 |
+| 上海 | `seeds/shanghai.yaml` | 2 | 2 条可用 |
+| 广州 | `seeds/guangzhou.yaml` | 1 | 1 条可用（样本薄） |
+| 杭州 | `seeds/hangzhou.yaml` | 1 | 1 条可用，但活动行时间靠 JS 渲染，抽不到就标「未标时间」 |
+| 成都 | `seeds/chengdu.yaml` | 2 | 1 条可用（搜狐 403） |
+| 深圳 | `seeds/shenzhen.yaml` | 2 + 16 个号 | 2 条可用，账号表待 v0.2 接入 |
+
+加城市不用改代码：`freebie seeds init --city 成都` 生成模板，把实测抓得通的活动页填进 `channels:` 即可。
 
 ## 配置
 
@@ -165,6 +188,8 @@ src/freebie/
   seeds.py      城市 → 信源的查找与 yaml 解析（加城市不改代码）
   sources/      search（多引擎）/ direct（裸抓）/ werss（订阅后端）
 seeds/          每个城市一个 yaml：channels（当信源）+ queries + accounts（人工参考）
+tests/          回归用例（unittest，零依赖）：每条都对应一个真踩过的坑
+.github/        weekly.yml：周一跑一次，出 artifact
 prompts/        把 JSON 变成人话周报的 LLM prompt
 ```
 
@@ -174,6 +199,9 @@ prompts/        把 JSON 变成人话周报的 LLM prompt
 - **搜索会被风控**：搜狗连续 20~25 次请求后跳 antispider，之后全封；间隔 ≥3s、单轮 ≤10~15 查询。
 - **公众号内容不进 `web_fetch`**：会被重定向到 `mp/wappoc_appmsgcaptcha`，必须 curl。
 - **活动行/大麦这类平台正文常是前端模板**，抽不到干净摘要时本工具留空，而不是印一行 `{{venueInfo.todoCount}}`。
+- **活动行的「活动时间」是 JS 渲染的**：抓到的 HTML 里没有日期，只能标 `⚠️ 未标时间`，别以为抓漏了。
+- **搜狐号会返 403**，本地宝/聚合页里塞满「相关推荐」链接（`XX大剧院入场须知（附交通…）`），这些行已被场地过滤器拦掉，但同形态的噪声还会再出现。
+- **`state/seen.json` 会让重跑变 0 条**：这是去重台账在起作用，验证时加 `--dry-run`。
 
 ## 路线图
 
