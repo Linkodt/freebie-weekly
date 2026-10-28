@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "freebie-weekly"
+version = "0.1.0"
+description = "每周一次，把你所在城市的免费体验和低价体验活动，整理成一份能直接照着去的清单。"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "freebie-weekly contributors" }]
+keywords = ["wechat", "events", "local", "weekly", "digest", "harness"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=6"]
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[project.scripts]
+freebie = "freebie.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

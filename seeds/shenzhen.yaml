@@ -1,0 +1,93 @@
+# 深圳本地活动信源清单
+#
+# 状态：**v0.1 未接入代码**。单篇文章能抓，但拿不到一个号的完整文章列表，
+# 所以按号盯需要 v0.2 的 we-mp-rss 订阅后端。先落盘，免得下次重新搜一遍。
+#
+# 来源：搜狗微信文章搜索（type=2）实测命中 + 各号近期真实发文的署名，
+# 不是推测名单。粉丝数来自西瓜数据生活日榜，仅供参考。
+#
+# 打分口径：hits = 在「免费活动/本周末汇总/免费展览音乐会」这几组查询里的命中次数；
+#           命中多说明它**经常发**这类内容，不说明它发得**好**。
+
+city: 深圳
+city_id: sz
+accounts:
+  - name: 深圳生活宝典
+    hits: 3
+    note: 每周固定出「周末免费活动汇总」，本次抽到的原文即出自此号（署名「深圳周末去哪玩」，疑似改名，需在微信内核对）
+    tier: A
+  - name: 深圳周末去哪玩
+    hits: 2
+    note: 同上，署名号；周更汇总，覆盖免费市集/演出
+    tier: A
+  - name: ShenzhenLOOK
+    hits: 2
+    fans: 44.9万
+    wechat_id: shenzhenlook0755
+    note: 城市生活向，展览/新店/活动，质量较高但偏消费
+    tier: A
+  - name: 深圳之窗
+    hits: 2
+    fans: 144.9万
+    wechat_id: shenchuang0755
+    note: 门户型，活动资讯量大、噪声也大
+    tier: B
+  - name: 周末不无聊-湾区
+    hits: 1
+    note: 湾区（含广深港）周末活动合集
+    tier: B
+  - name: 深圳慢游
+    hits: 1
+    note: 公园/户外/免费打卡向
+    tier: B
+  - name: 深益学堂
+    hits: 1
+    note: 公益/讲座向，免费活动占比高
+    tier: B
+  - name: 深活益站
+    hits: 1
+    note: 公益/志愿/免费体验
+    tier: B
+  - name: 深圳查查吧
+    hits: 1
+    note: 民生资讯，偶有免费福利
+    tier: C
+  - name: 深圳八点亲子
+    hits: 1
+    note: 亲子活动，免费体验课/开放日较多
+    tier: B
+  - name: 干嘛呢李同学
+    hits: 1
+    note: 个人向探店/活动，覆盖独立活动
+    tier: C
+  - name: 一陶旅行日记
+    hits: 1
+    note: 展览/城市漫步向
+    tier: C
+  - name: 深圳本地宝
+    hits: 0
+    note: 矩阵号，每城都有；资讯标准化，适合兜底
+    tier: A
+  - name: 本地宝深圳办事易
+    hits: 0
+    note: 同上，偏办事/政策，偶有免费活动
+    tier: C
+  - name: 携程热点
+    hits: 0
+    note: 一个号发全国各城「周末去哪玩」，适合跨城复用到别的城市清单
+    tier: B
+  - name: 什么值得买
+    hits: 0
+    fans: 50万
+    wechat_id: SMZDM_SMZDM
+    note: 低价捡漏向，不是本地活动，但「低价体验原价贵」的信号最全
+    tier: B
+
+# 官方渠道（走 direct 抓取，不需要公众号）
+official:
+  - url: https://wtl.sz.gov.cn/bsfw/mzwhhd/mzly/
+    note: 深圳市文化广电旅游体育局「旅游」栏目，免费开放类公告
+  - url: https://www.szlib.org.cn/
+    note: 深圳图书馆活动（实测有个别页面取不到，需重试）
+  - url: https://www.szmu.cn/
+    note: 深圳博物馆，展览常年免费

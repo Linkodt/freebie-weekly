@@ -1,0 +1,54 @@
+# 北京本地活动信源清单
+#
+# 用法：`freebie run --city 北京` 会自动读这里的 channels 当固定信源，不跑搜索。
+# 想临时换一批：`--urls ...`；想强制走搜索：`--no-seeds`。
+#
+# 为什么信源都写「具体活动页」而不是「栏目首页」：
+# 栏目页每周都变，但正文只有标题行，抽不出时间/地点/价格，抓到也进不了周报。
+# 所以这里的 url 是本周实测抓通的页面，下周它可能过期——那就换链接，别指望它自己更新。
+#
+# 状态：v0.1。accounts 只供人工参考，代码不读，因为拿不到号的文章列表。
+
+city: 北京
+city_id: bj
+
+channels:
+  - name: 北京日报 · 大戏看北京
+    url: https://peking.bjd.com.cn/content/s6ac9ffb0e4b0e42f8f01637d.html
+    note: 展演季专题。街头/商圈/校园/剧院都有场次，免费+需预约，11.1、11.8 有排期
+  - name: 北京时间 · 通州副中心
+    url: https://item.btime.com/44p6p8j9cmi9mtb5dtpb8h9risj
+    note: 绿心花朝游园会，10.31~11.1 主场，全程免费，含市集/手作/红叶邮局
+  - name: 国家大剧院 · 公益演出
+    url: https://www.chncpa.org/zxdtxlm/rdjjjhlm/rdjj_wx/202610/t20261009_295929.shtml
+    note: 河畔时光周末音乐会 10-11 月排期，国家大剧院管弦乐团，免费需预约
+  - name: 北京市政府 · 惠民观演季
+    url: https://www.beijing.gov.cn/fuwu/bmfw/sy/jrts/202609/t20260920_4871922.html
+    note: 满 100 减 40 这类券，不是免票。按「低价」用，别标成免费
+
+# 发现入口（不是信源）：这些栏目页每周有新活动，用它找链接再填进 channels
+#  - https://www.beijing.gov.cn/fuwu/bmfw/sy/jrts/       今日推荐
+#  - https://www.chncpa.org/zxdtxlm/                     国家大剧院动态
+#  - https://physics.bnu.edu.cn/xwdt/                    北师大物理系（科普开放日，校外可约）
+#  - https://alumni.ucas.ac.cn/index.php/zh/xiaoyouhuodong/cc/  CC讲坛（免费公开讲座）
+
+queries:
+  - "{city} 本周末 免费 活动 汇总"
+  - "{city} 免费 展览 音乐会 市集"
+  - "site:mp.weixin.qq.com {city} 免费 音乐会"
+  - "{city} 高校 开放日 讲座 校外"
+
+accounts:
+  - name: 谁说帝都养娃贵
+    hits: 1
+    note: 实测命中 1 篇「免费好资源」长文，免费场馆/亲子向，信息密度高
+    tier: B
+  - name: 携程热点
+    hits: 1
+    note: 全国矩阵号，每城发「周末去哪玩」合集；北京条目全但偏商业，免费信息要再筛
+    tier: B
+  - name: 回龙观社区网
+    hits: 1
+    fans: 24.7万
+    note: 社区号，回龙观/昌平一带免费活动与场地信息，地域性极强，出了片区就没用
+    tier: C

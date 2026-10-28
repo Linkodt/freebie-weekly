@@ -1,0 +1,37 @@
+# 复制成 config.yaml 再改（config.yaml 已在 .gitignore 里）
+# city 必填：也可以不写在配置里，改用 `freebie run --city 北京`
+city: ""
+timezone: Asia/Shanghai
+
+# auto = 先试 WeRSS，不可达自动降级 direct；direct = 只裸抓；werss = 只用订阅服务
+backend: auto
+werss_url: http://127.0.0.1:8001
+# werss_token: ""
+
+# 城市信源：true = 自动读 seeds/<城市>.yaml 里的 channels 当固定信源
+use_seeds: true
+# seeds_dir: ""          # 额外的 seeds 目录，默认 ./seeds、./seed、$FREEBIE_SEEDS
+
+max_items: 15
+delay_s: 1.5            # 每次抓取之间的间隔，别把自己抓进风控
+
+# 固定信源：填了这些就不跑搜索，每周结果可复现。
+# 建议填具体活动/文章页（字段最全），栏目页只有列表、抽不出时间。
+sources: []
+# sources:
+#   - https://wtl.sz.gov.cn/bsfw/mzwhhd/mzly/content/post_13027678.html
+#   - https://hkszlife.com/article/shenzhen-reading-month-2026
+
+# 留空则用内置默认搜索词（{city} 会被替换成 city）
+# queries:
+#   - "{city} 免费活动"
+#   - "{city} 本周末 活动 汇总"
+#   - "{city} 免费 展览 音乐会 市集"
+#   - "site:mp.weixin.qq.com {city} 免费 音乐会"
+
+filters:
+  free_only: false              # true = 只要免费的
+  max_price: 80                 # 「低价」上限（元）
+  require_original_price: false # true = 低价条目必须带原价，否则丢（防假低价）
+  lookahead_days: 10            # 往后看几天
+  min_text_len: 400             # 正文太短的多半是图片海报号
