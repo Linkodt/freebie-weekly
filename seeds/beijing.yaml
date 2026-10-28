@@ -13,6 +13,13 @@ city: 北京
 city_id: bj
 
 channels:
+  # 汇总页（一页装十几场）：代码会按「活动时间：」把它拆成多条，一条页也能贡献十几条
+  - name: 北京本地宝 · 11月市集汇总
+    url: https://m.bj.bendibao.com/xiuxian/387398.html
+    note: 一页 6+ 场市集，四行块结构（名称/活动时间/活动地点/门票），实测全拆分成功
+  - name: 首都之窗 · 博物馆展览
+    url: https://www.beijing.gov.cn/fwcj/calendar/bwgzl/6ac9980388f81c019f706700.html
+    note: 中国美术馆藏古代绘画精品展等常设展，免费但需在馆方公众号预约
   - name: 北京日报 · 大戏看北京
     url: https://peking.bjd.com.cn/content/s6ac9ffb0e4b0e42f8f01637d.html
     note: 展演季专题。街头/商圈/校园/剧院都有场次，免费+需预约，11.1、11.8 有排期

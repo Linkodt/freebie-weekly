@@ -146,7 +146,7 @@ JUNK_LINE_RE = re.compile(
 )
 
 
-LABEL_RE = re.compile(r"^(预约方式|报名方式|活动时间|活动地点|活动地址|购票方式|参与方式)[：:]\s*")
+LABEL_RE = re.compile(r"^(预约方式|报名方式|购票方式|参与方式)[：:]\s*")
 
 
 def _filter_lines(text: str) -> str:
@@ -219,9 +219,11 @@ def parse_article(page: str) -> dict:
 
 def _strip_site_suffix(title: str) -> str:
     """`…攻略来啦_北京时间`：og:title 常带站点名，剪掉；标题本身很短时不剪。"""
-    m = re.search(r"[_|｜]\s*([^_|｜]{2,10})$", title)
-    if m and m.start() >= 8 and not re.search(r"\d", m.group(1)):
-        return title[: m.start()].strip()
+    for pat in (r"[_|｜]\s*([^_|｜]{2,10})$", r"\s*[-–—－]\s*([^-–—－]{2,10})$"):
+        m = re.search(pat, title)
+        # 半角短横线不剪：会把「10.31-11.1」「2026-11」这类日期切坏
+        if m and m.start() >= 8 and not re.search(r"\d", m.group(1)):
+            return title[: m.start()].strip()
     return title
 
 
@@ -364,3 +366,74 @@ def summarize(text: str, title: str = "", limit: int = 110) -> str:
 def _clip(s: str, limit: int) -> str:
     s = re.sub(r"\s+", " ", s).strip(" 　:：-—*|")
     return s if len(s) <= limit else s[: limit - 1] + "…"
+
+
+# ---------------------------------------------------------------- 汇总页拆分
+# 「11月市集活动汇总」这种页面一页装十几场，每场是固定四行：
+#   活动名
+#   活动时间：11月6日–11月8日 11:00-20:00
+#   活动地点：东城区东四南大街15号
+#   门票：免费
+# 整页当成一条，等于把一周的供给压成一条。按「活动时间：」切块就能一条变十几条。
+
+ROUNDUP_LABEL_RE = re.compile(r"活动时间[：:]|活動時間[：:]")
+ROUNDUP_NOISE_NAME_RE = re.compile(r"时间地点|時間地點|汇总|匯總|攻略|大全|盘点|盤點|第\d+页|下一页|上一页")
+
+
+def roundup_events(text: str) -> List[dict]:
+    """把汇总页拆成多条活动。拆不干净就返回空列表，宁可当普通文章。"""
+    parts = ROUNDUP_LABEL_RE.split(text)
+    if len(parts) < 3:  # 只出现一两次，不是汇总页
+        return []
+    out = []
+    for i in range(1, len(parts)):
+        name = _event_name(parts[i - 1])
+        seg = [ln.strip() for ln in parts[i].split("\n") if ln.strip()]
+        if not name or not seg:
+            continue
+        when = seg[0]
+        if not re.search(r"\d", when):
+            continue
+        place = _labelled(seg, r"活动地点|活動地點|活动地址|活动场地")
+        price = _labelled(seg, r"门票|門票|票价|票價|费用|費用|入场")
+        blurb = _labelled(seg, r"活动亮点|活動亮點|活动介绍|活动內容|活动内容")
+        f = extract_fields(when)
+        if not f["date_hints"]:
+            f = extract_fields(" ".join(seg[:3]))
+        pf = extract_fields(price) if price else {"is_free": False, "prices": []}
+        out.append(
+            {
+                "title": name,
+                "venue": place,
+                "when": when,
+                "fields": f,
+                "is_free": pf["is_free"],
+                "prices": pf["prices"],
+                "summary": _clip(blurb, 120) if blurb else "",
+            }
+        )
+    return out if len(out) >= 2 else []
+
+
+def _event_name(prev_block: str) -> str:
+    """活动名 = 上一块的最后一行。汇总页里名称常在四行块的头部或尾部。"""
+    lines = [ln.strip() for ln in prev_block.split("\n") if ln.strip()]
+    for ln in reversed(lines[-3:]):
+        ln = re.sub(r"^\d{1,2}\s*[、.．)）]\s*", "", ln)
+        if not (2 <= len(ln) <= 40):
+            continue
+        if JUNK_LINE_RE.search(ln) or ROUNDUP_NOISE_NAME_RE.search(ln):
+            continue
+        if not re.search(r"[\u4e00-\u9fa5]", ln):
+            continue
+        return ln
+    return ""
+
+
+def _labelled(seg: List[str], label_pat: str) -> str:
+    pat = re.compile(r"^(?:" + label_pat + r")\s*[：:]\s*(.+)$")
+    for ln in seg[:12]:
+        m = pat.match(ln)
+        if m:
+            return _clip(m.group(1), 60)
+    return ""

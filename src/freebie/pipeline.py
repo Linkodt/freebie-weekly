@@ -22,6 +22,9 @@ class Result:
     items: List[Item] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
     stats: dict = field(default_factory=dict)
+    # 找到了但没过筛的条目（标题、原因、日期线索）。报告末尾单列出来，
+    # 否则用户只看到 3 条，不知道其实还抓到 6 条、只是时间不在窗口里。
+    dropped_items: List[tuple] = field(default_factory=list)
 
 
 def _hint_offset(hint: str, now: time.struct_time) -> Optional[int]:
@@ -154,28 +157,30 @@ def run(
     raw: List[Item] = []
     seen_keys = state.seen if state is not None else set()
     for i, url in enumerate(cand):
-        item, err = sources.direct.try_fetch(url)
+        items, err = sources.direct.try_fetch_all(url)
         # 移动站/资讯站会偶尔吐一个空壳页（实测 btime 同一链接一次 3483 字、一次 0 字）。
         # 空壳明显是瞬时故障，重试一次；130 字的「账号已迁移」是真内容，不重试。
-        if not err and item.text_len < 200:
+        if not err and len(items) == 1 and items[0].text_len < 200:
             if verbose:
-                print(f"  [{i + 1}/{len(cand)}] 正文仅 {item.text_len} 字，重试一次")
+                print(f"  [{i + 1}/{len(cand)}] 正文仅 {items[0].text_len} 字，重试一次")
             time.sleep(cfg.delay_s)
-            again, err2 = sources.direct.try_fetch(url)
-            if not err2 and again.text_len > item.text_len:
-                item = again
-        if err:
-            res.notes.append(err)
+            again, err2 = sources.direct.try_fetch_all(url)
+            if not err2 and again and again[0].text_len > items[0].text_len:
+                items = again
+        if err or not items:
+            res.notes.append(err or f"没抓到任何内容: {url[:70]}")
             if verbose:
                 print(f"  [{i + 1}/{len(cand)}] 失败 {err}")
             continue
         if verbose:
-            print(f"  [{i + 1}/{len(cand)}] {item.title[:40]} 正文 {item.text_len} 字")
-        raw.append(item)
+            for it in items:
+                print(f"  [{i + 1}/{len(cand)}] {it.title[:36]} 正文 {it.text_len} 字")
+        raw.extend(items)
         if i + 1 < len(cand):
             time.sleep(cfg.delay_s)
 
     res.stats["fetched"] = len(raw)
+    res.stats["split"] = sum(1 for it in raw if it.notes.startswith("汇总页拆分"))
 
     kept, dropped = [], {}
     for it in raw:
@@ -201,6 +206,8 @@ def run(
         ok, why = in_window(it, cfg, now)
         if not ok:
             dropped[why] = dropped.get(why, 0) + 1
+            if why in ("已过期", "超出窗口"):
+                res.dropped_items.append((it.title, why, " / ".join(it.date_hints[:2])))
             continue
         if why:
             it.notes = (it.notes + "；" + why) if it.notes else why

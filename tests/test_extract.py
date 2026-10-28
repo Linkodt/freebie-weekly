@@ -7,8 +7,10 @@
 import os
 import time
 import unittest
+from types import SimpleNamespace
 
-from freebie import extract, seeds
+from freebie import extract, report, seeds
+from freebie.config import Config
 from freebie.models import Item
 from freebie.pipeline import _hint_offset, in_window
 from freebie.config import Config
@@ -180,3 +182,115 @@ class DedupeKeyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+ROUNDUP = """2026北京11月市集活动时间地点及门票- 北京本地宝
+北平秋市
+活动时间：11月6日–11月8日11:00-20:00
+活动地点：北京市东城区东四南大街15号
+活动亮点：用当代生活美学，重新翻译文人笔下的秋日生活质感
+门票：免费
+“不畅销”图书市集
+活动时间：持续至11月3日
+活动地点：北京西单更新场B1水之中庭
+门票：免费
+怪兽超市市集
+活动时间：10月31日~11月1日 每日10:30-23:00
+活动地点：北京市海淀区学清路38号BOM嘻番里3F
+门票：60元
+"""
+
+
+class RoundupTest(unittest.TestCase):
+    """一页十几场的汇总页，必须拆成多条——否则「条目太少」永远治不好。"""
+
+    def test_one_page_becomes_many_events(self):
+        evs = extract.roundup_events(ROUNDUP)
+        self.assertEqual(len(evs), 3)
+        self.assertEqual([e["title"] for e in evs], ["北平秋市", "“不畅销”图书市集", "怪兽超市市集"])
+
+    def test_each_event_keeps_its_own_date_and_price(self):
+        evs = extract.roundup_events(ROUNDUP)
+        self.assertEqual(evs[0]["fields"]["date_hints"], ["11.6-11.8"])
+        self.assertEqual(evs[1]["fields"]["date_hints"], ["11.3"])
+        self.assertTrue(evs[0]["is_free"])
+        self.assertFalse(evs[2]["is_free"])
+        self.assertEqual(evs[2]["prices"], [60.0])
+
+    def test_venue_is_not_the_whole_label_line(self):
+        evs = extract.roundup_events(ROUNDUP)
+        self.assertEqual(evs[2]["venue"], "北京市海淀区学清路38号BOM嘻番里3F")
+
+    def test_normal_article_is_not_split(self):
+        text = "活动时间：11月1日 14:00\n活动地点：民族剧院\n门票：免费"
+        self.assertEqual(extract.roundup_events(text), [])
+
+
+class RenderTest(unittest.TestCase):
+    """排版是用户直接看到的东西：分组、链接、丢弃条目都要对。"""
+
+    NOW = time.localtime(time.mktime((2026, 10, 28, 12, 0, 0, 0, 0, -1)))
+
+    def _item(self, title, hints, price=None, free=True, **kw):
+        it = Item(
+            url=kw.pop("url", "https://item.btime.com/x"),
+            title=title,
+            is_free=free,
+            prices=[] if free else ([price] if price else []),
+            date_hints=hints,
+            venue=kw.pop("venue", ""),
+            summary=kw.pop("summary", ""),
+            needs_booking=kw.pop("needs_booking", False),
+            deadline=kw.pop("deadline", ""),
+            notes=kw.pop("notes", ""),
+            text_len=800,
+        )
+        return it
+
+    def _render(self, items, dropped=(), notes=()):
+        res = SimpleNamespace(
+            items=items,
+            notes=list(notes),
+            stats={"candidates": 3, "fetched": 4, "kept": len(items), "dropped": {"超出窗口": 1}},
+            dropped_items=list(dropped),
+        )
+        return report.render(res, Config(city="北京"), now=self.NOW)
+
+    def test_groups_by_when_not_by_score(self):
+        out = self._render(
+            [
+                self._item("这周的活动", ["10.31"]),
+                self._item("下周的活动", ["11.9"]),
+                self._item("没写时间的活动", []),
+            ]
+        )
+        self.assertLess(out.index("这周就能去"), out.index("之后几天"))
+        self.assertLess(out.index("之后几天"), out.index("时间没写清"))
+        self.assertIn("▎这周就能去（1）", out)
+
+    def test_link_is_markdown_with_readable_label(self):
+        out = self._render([self._item("绿心花朝游园会", ["10.31"])])
+        self.assertIn("[北京时间](https://item.btime.com/x)", out)
+        self.assertNotIn("→ https://", out.replace("[北京时间]", ""))  # 不再裸贴 URL
+
+    def test_long_title_is_cut_and_action_line_exists(self):
+        out = self._render([self._item("通州不远 周末首选 | 拍红叶、逛市集、做手作、看演出、逛市集（内含地铁接驳与停车指南）", ["10.31"])])
+        self.assertIn("…", out)
+        self.assertIn("不用预约，直接去", out)
+
+    def test_booking_items_say_so(self):
+        out = self._render([self._item("河畔时光音乐会", ["11.1"], needs_booking=True)])
+        self.assertIn("要预约，点原文找入口", out)
+
+    def test_dropped_items_are_listed(self):
+        out = self._render(
+            [self._item("留下的", ["10.31"])],
+            dropped=[("惠民观演季", "超出窗口", "11.15")],
+        )
+        self.assertIn("也抓到了，但不在本周窗口", out)
+        self.assertIn("惠民观演季（超出窗口，11.15）", out)
+
+    def test_split_links_point_back_to_the_page(self):
+        out = self._render([self._item("怪兽超市市集", ["10.31"], url="https://m.bj.bendibao.com/x.html#3")])
+        self.assertIn("[本地宝](https://m.bj.bendibao.com/x.html)", out)
+        self.assertNotIn("#3)", out)

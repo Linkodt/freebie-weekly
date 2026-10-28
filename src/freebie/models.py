@@ -23,6 +23,8 @@ class Item:
     text_len: int = 0
     source: str = ""  # direct / werss / manual
     notes: str = ""
+    # 原始正文只给「汇总页拆分」用，不参与渲染也不进 JSON（一页 4000 字会把输出撑爆）
+    raw_text: str = ""
 
     @property
     def key(self) -> str:
@@ -40,7 +42,9 @@ class Item:
         return min(self.prices) if self.prices else None
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d.pop("raw_text", None)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "Item":
