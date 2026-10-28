@@ -30,6 +30,8 @@ def _build_parser() -> argparse.ArgumentParser:
     r.add_argument("--free-only", action="store_true", help="只要免费的")
     r.add_argument("--lookahead", type=int, help="往后看几天")
     r.add_argument("--dry-run", action="store_true", help="不写去重台账、不落盘")
+    r.add_argument("--ignore-seen", action="store_true",
+                   help="忽略去重台账重新出一遍（想再看一次本周结果时用）")
     r.add_argument("--no-seeds", action="store_true", help="忽略 seeds/ 里的城市信源，强制走搜索")
     r.add_argument("--seeds-dir", help="额外的 seeds 目录（默认 ./seeds、./seed、$FREEBIE_SEEDS）")
     r.add_argument("--json", action="store_true", help="输出 JSON 而不是周报")
@@ -82,7 +84,9 @@ def cmd_run(args) -> int:
               "（也可在 config.yaml 里写 city: 北京；用 freebie cities 看哪些城市已备好信源）",
               file=sys.stderr)
         return 2
-    st = State(read_only=args.dry_run)
+    st = State(read_only=args.dry_run or args.ignore_seen)
+    if args.ignore_seen:
+        st.data["seen"] = {}  # 台账留着，只是这次不拿它过滤
     res = pipeline.run(
         cfg,
         urls=args.urls,
